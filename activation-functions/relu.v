@@ -6,11 +6,11 @@ module relu #(
     input wire reset,               // Active high reset
     input wire enable,              // Control signal to start computation
     
-    // Input vector 
-    input wire [DATA_WIDTH-1:0] input_vector [0:WIDTH-1],
+    // Input vector (flattened to bit vector)
+    input wire [WIDTH*DATA_WIDTH-1:0] input_vector,
     
-    // Output vector after ReLU activation
-    output reg [DATA_WIDTH-1:0] output_vector [0:WIDTH-1],
+    // Output vector after ReLU activation (flattened to bit vector)
+    output reg [WIDTH*DATA_WIDTH-1:0] output_vector,
     output reg done
 );
 
@@ -31,9 +31,7 @@ module relu #(
             done <= 0;
             
             // Reset output vector
-            for (integer i = 0; i < WIDTH; i = i + 1) begin
-                output_vector[i] <= 0;
-            end
+            output_vector <= 0;
         end else begin
             case (state)
                 IDLE: begin
@@ -46,13 +44,17 @@ module relu #(
                 
                 PROCESSING: begin
                     // ReLU function: max(0, x)
+                    // Extract current element using bit slicing
+                    // Current input element: input_vector[(index+1)*DATA_WIDTH-1 -: DATA_WIDTH]
+                    
                     // Check MSB to determine sign (fixed-point representation)
-                    if (input_vector[index][DATA_WIDTH-1] == 1'b1) begin
+                    if (input_vector[(index+1)*DATA_WIDTH-1]) begin
                         // Negative value, output is 0
-                        output_vector[index] <= 0;
+                        output_vector[(index+1)*DATA_WIDTH-1 -: DATA_WIDTH] <= 0;
                     end else begin
                         // Positive or zero value, pass through
-                        output_vector[index] <= input_vector[index];
+                        output_vector[(index+1)*DATA_WIDTH-1 -: DATA_WIDTH] <= 
+                            input_vector[(index+1)*DATA_WIDTH-1 -: DATA_WIDTH];
                     end
                     
                     // Increment counter or finish
